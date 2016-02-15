@@ -18,8 +18,10 @@ network.valued = network.advice + network.coworker + network.friendship
 
 #overview plots
 attributes$gender <- as.factor(attributes$gender)
-ggplot(attributes, aes(x = gender, fill = gender)) + geom_bar()
 
+pdf("gender.pdf")
+ggplot(attributes, aes(x = gender, fill = gender)) + geom_bar()
+dev.off()
 
 pdf("Status.pdf")
 ggplot(attributes, aes(attributes$status, fill = as.factor(gender))) + geom_bar() +
@@ -52,10 +54,10 @@ list.vertex.attributes(g.friendship)
 ###
 #3. visualizing the graph
 
-layout1 <- layout.fruchterman.reingold(g)
+layout1 <- layout.fruchterman.reingold(g.friendship)
 
 #Vertice colored basde on gender
-pdf("Gender.pdf")
+pdf("Gender-Graph.pdf")
 gender_vertex_colors = get.vertex.attribute(g.friendship,"Gender")
 colors = c('Black','Yellow')
 gender_vertex_colors[gender_vertex_colors == 1] = colors[1]
@@ -71,7 +73,7 @@ legend(1, 1.25, legend = c('Male', 'Female'),
 dev.off()
 
 #Vertice colored based on Status
-pdf("Status.pdf")
+pdf("Status-Graph.pdf")
 status_vertex_colors = get.vertex.attribute(g.friendship,"Status")
 colors = c('Blue','Red')
 status_vertex_colors[status_vertex_colors == 1] = colors[1]
@@ -99,7 +101,7 @@ legend(1, 1.25, legend = c('Partner', 'Associate'),
 dev.off()
 
 #Vertice colored based on practice
-pdf("Practice.pdf")
+pdf("Practice-graph.pdf")
 practice_vertex_colors = get.vertex.attribute(g.friendship,"Practice")
 colors = c('Green','Red')
 practice_vertex_colors[practice_vertex_colors == 1] = colors[1]
