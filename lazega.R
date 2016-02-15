@@ -1,10 +1,13 @@
 library(ggplot2)
+library(gridExtra)
 library(plyr)
 library(reshape)
 library(igraph)
 library(NetData)
 
-#importing data
+###
+#1.importing data
+
 attributes = read.table("atts.csv", sep = ",", header = T)
 network.coworker = read.table("ELwork.dat")
 network.advice = read.csv("advice.csv")
@@ -17,31 +20,38 @@ network.valued = network.advice + network.coworker + network.friendship
 attributes$gender <- as.factor(attributes$gender)
 ggplot(attributes, aes(x = gender, fill = gender)) + geom_bar()
 
+
+pdf("Status.pdf")
+ggplot(attributes, aes(attributes$status, fill = as.factor(gender))) + geom_bar() +
+  labs(title = "Status and Gender", x = "Status of employment", y = "Number of staff", fill = "Gender")
+dev.off()
+
+pdf("seniority.pdf")
 ggplot(attributes, aes(attributes$seniority, fill = as.factor(gender))) +
   geom_histogram(binwidth = 1) +
-  labs(title = "Seniority and Gender", x = "Seniority - Years in the firm", y = "Number of staff") +
+  labs(title = "Seniority based on gender", x = "Years in the firm", y = "Number of staff") +
   ylim(0, 9)
+dev.off()
 
-ggplot(attributes, aes(attributes$seniority, fill = as.factor(status))) +
-  geom_histogram(binwidth = 1) +
-  labs(title = "Seniority and Affiliation", x = "Seniority - Years in the firm", y = "Number of staff") +
-  ylim(0, 9)
+###
+#2. Creating graph data
 
 #creating edge list
 network.matrix.friendship <- data.matrix(network.friendship, rownames.force = NA)
 g.friendship <- graph.adjacency(network.matrix.friendship, mode="directed")
+get.edgelist(g.friendship)
 
 #settting vertext attributes
 V(g.friendship)$Gender <- attributes$gender
 V(g.friendship)$Status <- attributes$status
 V(g.friendship)$Practice <- attributes$practice
+V(g.friendship)$degree <- degree(g.friendship, mode = c("all"))
 
 list.vertex.attributes(g.friendship)
 
-get.edgelist(g.friendship)
-V(g.friendship)$degree <- degree(g.friendship, mode = c("all"))
+###
+#3. visualizing the graph
 
-#visualizing the graph
 layout1 <- layout.fruchterman.reingold(g)
 
 #Vertice colored basde on gender
@@ -76,13 +86,87 @@ legend(1, 1.25, legend = c('Partner', 'Associate'),
        col = c('Blue','Red') , lty=1, cex = 0.5)
 dev.off()
 
+l2 <- layout_in_circle(g)
 
-V(g)$label.cex <- 2.2 * V(g)$degree / max(V(g)$degree)+ .2
-V(g)$label.color <- rgb(0, 0, .2, .8)
-V(g)$frame.color <- NA
-#egam <- (log(E(g)$weight)+.4) / max(log(E(g)$weight)+.4)
-#E(g)$color <- rgb(.5, .5, 0, egam)
-#E(g)$width <- egam 
-# plot the graph in layout1 
-  plot(g, layout=layout1)
+pdf("l2.pdf")
+plot(g.friendship, 
+     layout=l2, 
+     vertex.color=status_vertex_colors, 
+     vertex.label=NA, 
+     edge.arrow.size=.3)
+legend(1, 1.25, legend = c('Partner', 'Associate'), 
+       col = c('Blue','Red') , lty=1, cex = 0.5)
+dev.off()
+
+#Vertice colored based on practice
+pdf("Practice.pdf")
+practice_vertex_colors = get.vertex.attribute(g.friendship,"Practice")
+colors = c('Green','Red')
+practice_vertex_colors[practice_vertex_colors == 1] = colors[1]
+practice_vertex_colors[practice_vertex_colors == 2] = colors[2]
+
+plot(g.friendship, 
+     layout=layout1, 
+     vertex.color=practice_vertex_colors, 
+     vertex.label=NA, 
+     edge.arrow.size=.3)
+legend(1, 1.25, legend = c('litigation', 'corporate'), 
+       col = c('Green','Red') , lty=1, cex = 0.5)
+dev.off()
+
+
+
+###
+#4. Network level statistics
+deg_in <- degree(g.friendship, mode="in") 
+deg_out <- degree(g.friendship, mode="out") 
+
+#degree
+stat.1 = matrix( c(mean(deg_in), mean(deg_out), sd(deg_in), sd(deg_out)), nrow=2, ncol=2)
+rownames(stat.1) <- c("In Degree", "Out Degree")
+colnames(stat.1) <- c("Mean","SD")
+pdf("table.pdf")
+grid.table(stat.1)
+dev.off()
+
+#Assortatitivty and Homphily
+assortativity_nominal(g.friendship, V(g.friendship)$Gender, directed=T)
+assortativity_nominal(g.friendship, V(g.friendship)$Status, directed=T)
+assortativity_nominal(g.friendship, V(g.friendship)$Practice, directed=T)
+
+#Homophilly HHI
+get_iqvs <- function(graph, attribute) {
+  mat <- get.adjacency(graph)
+  attr_levels = get.vertex.attribute(graph, attribute, V(graph))
+  num_levels = length(unique(attr_levels))
+  iqvs = rep(0, nrow(mat))
+  
+  for (ego in 1:nrow(mat)) {
+    alter_attr_counts = rep(0, num_levels)
+    num_alters_this_ego = 0
+    sq_fraction_sum = 0
+    
+    for (alter in 1:ncol(mat)) {
+      
+      if (mat[ego, alter] == 1) {
+        num_alters_this_ego = num_alters_this_ego + 1
+        alter_attr = get.vertex.attribute(graph, attribute, (alter - 1))
+        alter_attr_counts[alter_attr + 1] = alter_attr_counts[alter_attr + 1] + 1
+      }
+    }
+    for (i in 1:num_levels) {
+      attr_fraction = alter_attr_counts[i] /
+        num_alters_this_ego
+      sq_fraction_sum = sq_fraction_sum + attr_fraction ^ 2
+    }
+    blau_index = 1 - sq_fraction_sum
+    iqvs[ego] = blau_index / (1 - (1 / num_levels))
+  }
+  return(iqvs)
+}
+
+gender_iqvs <- get_iqvs(g.friendship, 'Gender')
+status_iqvs <- get_iqvs(g.friendship, 'Status')
+practice_iqvs <- get_iqvs(g.friendship, 'Practice')
+
 
