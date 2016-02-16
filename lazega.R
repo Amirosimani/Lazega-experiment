@@ -172,3 +172,68 @@ status_iqvs <- get_iqvs(g.friendship, 'Status')
 practice_iqvs <- get_iqvs(g.friendship, 'Practice')
 
 
+
+#####
+#advice network
+
+network.matrix.advice <- data.matrix(network.advice, rownames.force = NA)
+g.advice <- graph.adjacency(network.matrix.advice, mode="directed")
+get.edgelist(g.advice)
+
+#settting vertext attributes
+V(g.advice)$Gender <- attributes$gender
+V(g.advice)$Status <- attributes$status
+V(g.advice)$Practice <- attributes$practice
+V(g.advice)$degree <- degree(g.advice, mode = c("all"))
+
+list.vertex.attributes(g.advice)
+layout1 <- layout.fruchterman.reingold(g.advice)
+
+
+pdf("Advice-Gender.pdf")
+gender_vertex_colors = get.vertex.attribute(g.advice,"Gender")
+colors = c('Black','Yellow')
+gender_vertex_colors[gender_vertex_colors == 1] = colors[1]
+gender_vertex_colors[gender_vertex_colors == 2] = colors[2]
+
+plot(g.advice, 
+     layout=layout1, 
+     vertex.color=gender_vertex_colors, 
+     vertex.label=NA, 
+     edge.arrow.size=.3)
+legend(1, 1.25, legend = c('Male', 'Female'), 
+       col = c('Black', 'Yellow'), lty=1, cex = 0.5)
+dev.off()
+
+#Vertice colored based on Status
+pdf("Advice-Status.pdf")
+status_vertex_colors = get.vertex.attribute(g.advice,"Status")
+colors = c('Blue','Red')
+status_vertex_colors[status_vertex_colors == 1] = colors[1]
+status_vertex_colors[status_vertex_colors == 2] = colors[2]
+
+plot(g.advice, 
+     layout=layout1, 
+     vertex.color=status_vertex_colors, 
+     vertex.label=NA, 
+     edge.arrow.size=.3)
+legend(1, 1.25, legend = c('Partner', 'Associate'), 
+       col = c('Blue','Red') , lty=1, cex = 0.5)
+dev.off()
+
+#Vertice colored based on practice
+pdf("Advice-Practice.pdf")
+practice_vertex_colors = get.vertex.attribute(g.advice,"Practice")
+colors = c('Green','Red')
+practice_vertex_colors[practice_vertex_colors == 1] = colors[1]
+practice_vertex_colors[practice_vertex_colors == 2] = colors[2]
+
+plot(g.advice, 
+     layout=layout1, 
+     vertex.color=practice_vertex_colors, 
+     vertex.label=NA, 
+     edge.arrow.size=.3)
+legend(1, 1.25, legend = c('litigation', 'corporate'), 
+       col = c('Green','Red') , lty=1, cex = 0.5)
+dev.off()
+
