@@ -15,10 +15,10 @@ network.friendship = read.csv("friends.csv")
 
 network.valued = network.advice + network.coworker + network.friendship 
 
-
 #overview plots
 attributes$gender <- as.factor(attributes$gender)
 
+#barplot(as.matrix(table(attributes$gender)), beside = FALSE)
 pdf("gender.pdf")
 ggplot(attributes, aes(x = gender, fill = gender)) + geom_bar()
 dev.off()
